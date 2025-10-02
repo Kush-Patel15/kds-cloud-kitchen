@@ -1,119 +1,63 @@
 package com.cloudkitchen.model;
 
 import jakarta.persistence.*;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import java.time.LocalDateTime;
-import java.util.List;
+import lombok.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "orders")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Order {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(name="order_id", unique = true, nullable = false, length = 30)
     private String orderId;
 
-    @Column(name = "customer_name")
+    @Column(nullable = false)
     private String customerName;
 
-    @Column(name = "customer_phone")
+    @Column(nullable = false, length = 20)
     private String customerPhone;
 
-    @Column(name = "customer_email")
+    @Column(nullable = false)
     private String customerEmail;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private OrderStatus status;
+    @Column(nullable = false, length = 10)
+    private OrderType orderType = OrderType.PICKUP;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "order_type")
-    private OrderType orderType;
-
-    @Column(name = "order_time", nullable = false)
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime orderTime;
-
-    @Column(name = "estimated_completion_time")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime estimatedCompletionTime;
-
-    @Column(name = "actual_completion_time")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime actualCompletionTime;
-
-    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
-    private BigDecimal totalAmount;
-
-    @Column(name = "aggregator_name")
-    private String aggregatorName;
-
-    @Column(name = "special_instructions", length = 500)
-    private String specialInstructions;
-
-    @Column(name = "delivery_address", length = 500)
-    private String deliveryAddress;
+    @Column(nullable = false, length = 15)
+    private OrderStatus status = OrderStatus.PENDING;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Priority priority;
+    @Column(nullable = false, length = 10)
+    private Priority priority = Priority.NORMAL;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_station_id")
-    private KitchenStation assignedStation;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalAmount = BigDecimal.ZERO;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference
-    private List<OrderItem> items;
+    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime orderTime = LocalDateTime.now();
+    private LocalDateTime readyTime;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Notification> notifications;
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<OrderItem> items = new ArrayList<>();
 
-    @Column(name = "created_at", nullable = false)
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime createdAt;
+    public enum OrderStatus { PENDING, PREPARING, READY, COMPLETED, CANCELLED }
+    public enum OrderType { PICKUP, DELIVERY }
+    public enum Priority { LOW, NORMAL, HIGH, URGENT }
 
-    @Column(name = "updated_at")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        if (orderTime == null) {
-            orderTime = LocalDateTime.now();
-        }
-        if (priority == null) {
-            priority = Priority.NORMAL;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    public enum OrderStatus {
-        PENDING, PREPARING, READY, COMPLETED, CANCELLED
-    }
-
-    public enum OrderType {
-        PICKUP, DELIVERY, DINE_IN
-    }
-
-    public enum Priority {
-        LOW, NORMAL, HIGH, URGENT
+    public void addItem(OrderItem item) {
+        item.setOrder(this);
+        items.add(item);
     }
 }

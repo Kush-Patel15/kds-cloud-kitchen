@@ -17,7 +17,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByStatusInOrderByOrderTimeAsc(List<OrderStatus> statuses);
     List<Order> findByPriorityOrderByOrderTimeAsc(Priority priority);
     List<Order> findByCustomerPhoneOrderByOrderTimeDesc(String customerPhone);
-    List<Order> findByOrderTimeBetweenOrderByOrderTimeDesc(LocalDateTime startTime, LocalDateTime endTime);
-    long countByStatus(OrderStatus status);
-    long countByStatusAndOrderTimeBetween(OrderStatus status, LocalDateTime startTime, LocalDateTime endTime);
+
+    // NEW: fetch orders for a customer by email (used by controller)
+    List<Order> findByCustomerEmailOrderByOrderTimeDesc(String customerEmail);
+    List<Order> findByOrderTimeBetweenOrderByOrderTimeDesc(LocalDateTime start, LocalDateTime end);
+    long countByStatus(Order.OrderStatus status);
 }

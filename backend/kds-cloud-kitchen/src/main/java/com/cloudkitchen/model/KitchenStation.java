@@ -40,9 +40,6 @@ public class KitchenStation {
     @OneToMany(mappedBy = "kitchenStation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<MenuItem> menuItems;
 
-    @OneToMany(mappedBy = "assignedStation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Order> assignedOrders;
-
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

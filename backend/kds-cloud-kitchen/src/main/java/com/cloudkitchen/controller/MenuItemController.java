@@ -218,7 +218,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/menu-items")
-@CrossOrigin
 public class MenuItemController {
 
   private final MenuItemRepository repo;
