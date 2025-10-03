@@ -34,30 +34,74 @@ public class Order {
     private OrderType orderType = OrderType.PICKUP;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 15)
+    @Column(nullable = false, length = 12)
     private OrderStatus status = OrderStatus.PENDING;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 8)
     private Priority priority = Priority.NORMAL;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    @Column(nullable = false)
     private LocalDateTime orderTime = LocalDateTime.now();
+
+    @Column
     private LocalDateTime readyTime;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Column
+    private LocalDateTime completedTime;
+
+    @Column(nullable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @Column(length = 500)
+    private String notes;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderItem> items = new ArrayList<>();
 
     public enum OrderStatus { PENDING, PREPARING, READY, COMPLETED, CANCELLED }
     public enum OrderType { PICKUP, DELIVERY }
     public enum Priority { LOW, NORMAL, HIGH, URGENT }
 
+    // Helper methods
     public void addItem(OrderItem item) {
-        item.setOrder(this);
         items.add(item);
+        item.setOrder(this);
+    }
+
+    public void removeItem(OrderItem item) {
+        items.remove(item);
+        item.setOrder(null);
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (orderTime == null) {
+            orderTime = LocalDateTime.now();
+        }
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    // Method to calculate total amount from items
+    public void calculateTotalAmount() {
+        this.totalAmount = items.stream()
+                .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

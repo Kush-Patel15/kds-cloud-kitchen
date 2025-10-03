@@ -17,7 +17,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/orders")
-
+@CrossOrigin(origins = "*")
 public class OrderController {
 
     private final OrderService orderService;
@@ -101,13 +101,17 @@ public class OrderController {
     @GetMapping("/active")
     public ResponseEntity<Map<String, Object>> active() {
         try {
-            List<Order> orders = orderService.listActiveOrders();
-            List<Map<String, Object>> mapped = orders.stream().map(this::mapOrder).toList();
-            return ResponseEntity.ok(Map.of("success", true, "orders", mapped));
+            List<Order> activeOrders = orderService.getActiveOrders();
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "orders", activeOrders,
+                "message", "Active orders retrieved successfully"
+            ));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "Failed to fetch active orders: " + e.getMessage()
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Failed to fetch active orders: " + e.getMessage(),
+                "orders", Collections.emptyList()
             ));
         }
     }
@@ -115,37 +119,48 @@ public class OrderController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<Map<String, Object>> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         try {
-            String status = body.get("status");
-            Order updated = orderService.updateStatus(id, OrderStatus.valueOf(status));
-            Map<String, Object> mapped = mapOrder(updated);
-
+            String statusStr = body.get("status");
+            OrderStatus status = OrderStatus.valueOf(statusStr.toUpperCase());
+            
+            Order updatedOrder = orderService.updateStatus(id, status);
+            
             // Broadcast status update
-            if (ws != null) {
-                ws.send("/topic/orders", Map.of("type", "status", "order", mapped));
-            }
-
-            return ResponseEntity.ok(Map.of("success", true, "order", mapped));
+            ws.send("/topic/orders", Map.of("type", "status", "order", mapOrder(updatedOrder)));
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "order", updatedOrder,
+                "message", "Order status updated successfully"
+            ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Failed to update order status: " + e.getMessage()
+            ));
         }
     }
 
     @PatchMapping("/{id}/complete")
     public ResponseEntity<Map<String, Object>> completeOrder(@PathVariable Long id) {
         try {
-            Order updated = orderService.updateStatus(id, OrderStatus.COMPLETED);
-            Map<String, Object> mapped = mapOrder(updated);
-
+            Order order = orderService.getOrderById(id);
+            order.setStatus(OrderStatus.COMPLETED);
+            order.setCompletedTime(LocalDateTime.now());
+            
+            Order updatedOrder = orderService.updateOrder(id, order);
+            
             // Broadcast completion
-            if (ws != null) {
-                ws.send("/topic/orders", Map.of("type", "completed", "order", mapped));
-            }
-
-            return ResponseEntity.ok(Map.of("success", true, "order", mapped));
+            ws.send("/topic/orders", Map.of("type", "completed", "order", mapOrder(updatedOrder)));
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "order", updatedOrder,
+                "message", "Order completed successfully"
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Order completion failed: " + e.getMessage()
+                "success", false,
+                "message", "Failed to complete order: " + e.getMessage()
             ));
         }
     }
@@ -154,12 +169,14 @@ public class OrderController {
     public ResponseEntity<Map<String, Object>> getByOrderCode(@PathVariable String orderCode) {
         try {
             Order order = orderService.getOrderByOrderId(orderCode);
-            Map<String, Object> mapped = mapOrder(order);
-            return ResponseEntity.ok(Map.of("success", true, "order", mapped));
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "order", order
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Order not found: " + e.getMessage()
+                "success", false,
+                "message", "Order not found: " + e.getMessage()
             ));
         }
     }
@@ -168,12 +185,14 @@ public class OrderController {
     public ResponseEntity<Map<String, Object>> getById(@PathVariable Long id) {
         try {
             Order order = orderService.getOrderById(id);
-            Map<String, Object> mapped = mapOrder(order);
-            return ResponseEntity.ok(Map.of("success", true, "order", mapped));
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "order", order
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Order not found: " + e.getMessage()
+                "success", false,
+                "message", "Order not found: " + e.getMessage()
             ));
         }
     }
